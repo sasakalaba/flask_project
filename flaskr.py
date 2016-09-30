@@ -1,19 +1,37 @@
 from datetime import datetime
+from ConfigParser import ConfigParser
+import os.path
 from flask import (
     abort, flash, Flask, redirect, render_template, request, url_for)
 #
 import sys
-from os import environ
 sys.path.insert(0, '/home/sasa/Projects/stormpath/stormpath-flask')
 from flask_stormpath import login_required, StormpathManager, user
 #
 
 
 """
+COnfiguration check
+"""
+env_files = ['flaskr.ini', 'apiKey.properties', 'apiKeyTravis.properties']
+for file in env_files:
+    if not os.path.isfile(file):
+        raise IOError('Generate env files before running the application.')
+
+
+"""
+Environment settings.
+"""
+config = ConfigParser()
+config.read('flaskr.ini')
+
+
+"""
 Application settings.
 """
-app = Flask(__name__)
-app.config.update({
+
+# My personal account (limited)
+flaskr_credentials = {
     'DEBUG': True,
     'SECRET_KEY': '365jeproslodana',
     'STORMPATH_API_KEY_FILE': 'apiKey.properties',
@@ -22,21 +40,36 @@ app.config.update({
     # Social login
     'STORMPATH_SOCIAL': {
         'FACEBOOK': {
-            'app_id': '',
-            'app_secret': ''},
+            'app_id': config.get('env', 'FACEBOOK_APP_ID'),
+            'app_secret': config.get('env', 'FACEBOOK_APP_SECRET')},
         'GOOGLE': {
-            'client_id': '',
-            'client_secret': ''}
+            'client_id': config.get('env', 'GOOGLE_CLIENT_ID'),
+            'client_secret': config.get('env', 'GOOGLE_CLIENT_SECRET')}
     },
     'STORMPATH_ENABLE_FACEBOOK': True,
     'STORMPATH_ENABLE_GOOGLE': True
-})
+}
+
+# Stormpath shared account (unlimited)
+travis_credentials = {
+    'DEBUG': True,
+    'SECRET_KEY': 'travis_secret',
+    'STORMPATH_API_KEY_FILE': 'apiKeyTravis.properties',
+    'STORMPATH_APPLICATION': 'flaskr_travis',
+}
+
+# Account setting
+credentials = travis_credentials
+
+app = Flask(__name__)
+app.config.update(credentials)
 stormpath_manager = StormpathManager(app)
 
 
 """
 Views
 """
+
 @app.route('/')
 @login_required
 def show_posts():
@@ -64,6 +97,11 @@ def add_post():
     flash('New post successfully added.')
     return redirect(url_for('show_posts'))
 
+
+@app.route('/invalid_request')
+def invalid_request():
+    flash('This is how I handle the response.')
+    return render_template('show_posts.html', posts=[])
 
 
 if __name__ == '__main__':
