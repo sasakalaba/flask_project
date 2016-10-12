@@ -70,7 +70,22 @@ stormpath_manager = StormpathManager(app)
 Views
 """
 
+
 @app.route('/')
+@login_required
+def index():
+    from helpers import development
+
+    flash('Use this view for testing out any flask / python-sdk stuff.')
+    params = {
+        'login': 'sasabackup@yahoo.com',
+        'password': 'Thesouprecha1'
+    }
+    development(params)
+    return render_template('layout.html')
+
+
+@app.route('/posts')
 @login_required
 def show_posts():
     posts = []
@@ -102,7 +117,6 @@ def add_post():
 def invalid_request():
     flash('This is how I handle the response.')
     return render_template('show_posts.html', posts=[])
-
 
 if __name__ == '__main__':
     app.run()

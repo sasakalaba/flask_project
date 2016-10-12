@@ -1,13 +1,20 @@
 import json
+import os
 from requests import PreparedRequest
 from requests.structures import CaseInsensitiveDict
 from requests.compat import OrderedDict
 from requests.cookies import RequestsCookieJar
 from stormpath.auth import Sauthc1Signer
 from stormpath.client import Client
-from stormpath.resources import FactorList, Factor
+from flask_stormpath.models import User
 from pydispatch import dispatcher
 from pprint import pprint
+
+
+# Env variables
+os.environ['STORMPATH_API_KEY_ID'] = '34T89RR6UW2JWTTUCB0CF8D87'
+os.environ['STORMPATH_API_KEY_SECRET'] = 'm2dPlw8ql20JdyPKA5uUB3Ppgs4nNSp45IJsqRRdp0g'
+os.environ['AUTH_SCHEME'] = 'SAuthc1'
 
 
 def generate_request(method, url, body):
@@ -17,29 +24,36 @@ def generate_request(method, url, body):
     method = method.upper()
     url = url
     files = []
-    body = body
     json_string = None
+
     headers = CaseInsensitiveDict({
         'Accept': 'application/json',
         'Accept-Encoding': 'gzip, deflate',
         'Connection': 'keep-alive',
-        'Content-Length': str(len(json.dumps(body))),
         'Content-Type': 'application/json',
         'User-Agent': 'stormpath-flask/0.4.4 flask/0.10.1 stormpath-sdk-python/2.4.5 python/2.7.6 Linux/LinuxMint (Linux-3.13.0-37-generic-x86_64-with-LinuxMint-17.1-rebecca)'
     })
+    if body:
+        headers.update({'Content-Length': str(len(json.dumps(body)))})
+
     params = OrderedDict()
     auth = Sauthc1Signer(
-        id='34T89RR6UW2JWTTUCB0CF8D87',
-        secret='m2dPlw8ql20JdyPKA5uUB3Ppgs4nNSp45IJsqRRdp0g')
+        id=os.environ.get('STORMPATH_API_KEY_ID'),
+        secret=os.environ.get('STORMPATH_API_KEY_SECRET'))
     cookies = RequestsCookieJar()
     hooks = {'response': []}
 
     pr = PreparedRequest()
+    if body:
+        json_body = json.dumps(body)
+    else:
+        json_body = None
+
     pr.prepare(
         method=method.upper(),
         url=url,
         files=files,
-        data=json.dumps(body),
+        data=json_body,
         json=json_string,
         headers=headers,
         params=params,
@@ -55,16 +69,11 @@ def get_resources():
     """
     Load all objects needed for developing new Stormpath resources.
     """
-
-    credentials = {
-        'STORMPATH_API_KEY_ID': '34T89RR6UW2JWTTUCB0CF8D87',
-        'STORMPATH_API_KEY_SECRET': "m2dPlw8ql20JdyPKA5uUB3Ppgs4nNSp45IJsqRRdp0g",
-    }
-    AUTH_SCHEME = 'SAuthc1'
+    AUTH_SCHEME = os.environ.get('AUTH_SCHEME')
 
     client = Client(
-        id=credentials['STORMPATH_API_KEY_ID'],
-        secret=credentials['STORMPATH_API_KEY_SECRET'],
+        id=os.environ.get('STORMPATH_API_KEY_ID'),
+        secret=os.environ.get('STORMPATH_API_KEY_SECRET'),
         base_url='https://api.stormpath.com/v1',
         scheme=AUTH_SCHEME)
 
@@ -159,10 +168,26 @@ def delete_resource(client, acc_url, resource):
     return None
 
 
-def main():
+def development(params):
     # Additional imports
-    import os
+    import time
+    os.environ['MYFLAG'] = 'nothing'
 
+    account = User.from_login(**params)
+
+    account.refresh()
+    os.environ['MYFLAG'] = 'foobar'
+    data = {
+        "phone": {"number": "+16622651635"},
+        "challenge": {"message": "${code}"},
+        "type": "SMS"}
+    fx = account.factors.create(properties=data, challenge=False)
+    os.environ['MYFLAG'] = 'nothing'
+    time.sleep(5)
+    fx.delete()
+
+
+def main():
     # Reset flag
     os.environ['MYFLAG'] = 'notbar'
 
@@ -170,7 +195,7 @@ def main():
     resource_name = 'factor'
     acc_url = 'https://api.stormpath.com/v1/accounts/6FZ1uG8uXob6TrxJJQB9j2'
     method = 'POST'
-    url = 'https://api.stormpath.com/v1/accounts/6FZ1uG8uXob6TrxJJQB9j2/factors?challenge=true'
+    url = acc_url + '/factors?challenge=true'
     body = {
         "phone": {"number": "+385 995734532"},
         "challenge": {"message": "${code}"},
@@ -192,7 +217,7 @@ def main():
     client = resources['client']
 
     # Set flag
-    os.environ['MYFLAG'] = 'foobar'
+    os.environ['MYFLAG'] = 'assert_request'
 
     try:
         created = eval(resource_name.title())(
