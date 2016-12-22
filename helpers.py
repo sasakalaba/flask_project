@@ -170,21 +170,19 @@ def delete_resource(client, acc_url, resource):
 
 def development(params):
     # Additional imports
-    import time
-    os.environ['MYFLAG'] = 'nothing'
+    pass
 
-    account = User.from_login(**params)
+    # Setup method
+    def setup():
+        # Enable breakpoint flag
+        os.environ['MYFLAG'] = 'notbar'
 
-    account.refresh()
-    os.environ['MYFLAG'] = 'foobar'
-    data = {
-        "phone": {"number": "+16622651635"},
-        "challenge": {"message": "${code}"},
-        "type": "SMS"}
-    fx = account.factors.create(properties=data, challenge=False)
-    os.environ['MYFLAG'] = 'nothing'
-    time.sleep(5)
-    fx.delete()
+    # Teardown method
+    def teardown(objects):
+        for obj in objects:
+            obj.delete()
+        # Disable breakpoint flag
+        os.environ['MYFLAG'] = 'notbar'
 
 
 def main():

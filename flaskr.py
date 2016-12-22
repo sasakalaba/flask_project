@@ -13,7 +13,7 @@ from flask_stormpath import login_required, StormpathManager, user
 """
 COnfiguration check
 """
-env_files = ['flaskr.ini', 'apiKey.properties', 'apiKeyTravis.properties']
+env_files = ['flaskr.ini', 'apiKey.properties']
 for file in env_files:
     if not os.path.isfile(file):
         raise IOError('Generate env files before running the application.')
@@ -30,12 +30,12 @@ config.read('flaskr.ini')
 Application settings.
 """
 
-# My personal account (limited)
+# Account credentials
 flaskr_credentials = {
     'DEBUG': True,
-    'SECRET_KEY': '365jeproslodana',
+    'SECRET_KEY': 'travis_secret',
     'STORMPATH_API_KEY_FILE': 'apiKey.properties',
-    'STORMPATH_APPLICATION': 'flaskr',
+    'STORMPATH_APPLICATION': 'flaskr_travis',
 
     # Social login
     'STORMPATH_SOCIAL': {
@@ -50,19 +50,12 @@ flaskr_credentials = {
     'STORMPATH_ENABLE_GOOGLE': True
 }
 
-# Stormpath shared account (unlimited)
-travis_credentials = {
-    'DEBUG': True,
-    'SECRET_KEY': 'travis_secret',
-    'STORMPATH_API_KEY_FILE': 'apiKeyTravis.properties',
-    'STORMPATH_APPLICATION': 'flaskr_travis',
-}
-
-# Account setting
-credentials = travis_credentials
-
 app = Flask(__name__)
-app.config.update(credentials)
+#
+#from flask_wtf import CsrfProtect
+#CsrfProtect(app)
+#
+app.config.update(flaskr_credentials)
 stormpath_manager = StormpathManager(app)
 
 
