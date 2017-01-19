@@ -1,13 +1,9 @@
 from datetime import datetime
 from ConfigParser import ConfigParser
 import os.path
-from flask import (
-    abort, flash, Flask, redirect, render_template, request, url_for)
-#
-import sys
-sys.path.insert(0, '/home/sasa/Projects/stormpath/stormpath-flask')
+from flask import flash, Flask, redirect, render_template, request, url_for
+from flask_wtf.csrf import CSRFProtect
 from flask_stormpath import login_required, StormpathManager, user
-#
 
 
 """
@@ -29,13 +25,14 @@ config.read('flaskr.ini')
 """
 Application settings.
 """
-
-# Account credentials
 flaskr_credentials = {
     'DEBUG': True,
     'SECRET_KEY': 'travis_secret',
     'STORMPATH_API_KEY_FILE': 'apiKey.properties',
     'STORMPATH_APPLICATION': 'flaskr_travis',
+    'STORMPATH_CONFIG_PATH': os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'config', 'default-config' + '.yml'),
 
     # Social login
     'STORMPATH_SOCIAL': {
@@ -51,10 +48,7 @@ flaskr_credentials = {
 }
 
 app = Flask(__name__)
-#
-#from flask_wtf import CsrfProtect
-#CsrfProtect(app)
-#
+csrf = CSRFProtect(app)
 app.config.update(flaskr_credentials)
 stormpath_manager = StormpathManager(app)
 
